@@ -2,30 +2,31 @@ version: '3.8'
 
 services:
   angular-app:
-    image: node:14
-    working_dir: /app
-    volumes:
-      - ./my-angular-app:/app
-    command: sh -c "npm install && ng serve --host 0.0.0.0"
+    container_name: angular-container
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "4200:4200"
-    depends_on:
-      - nestjs-app
+    networks:
+      - frontend-network
 
   nestjs-app:
-    image: node:14
-    working_dir: /app
-    volumes:
-      - ./my-nestjs-app:/app
-    command: sh -c "npm install && npm run start:dev"
+    container_name: nestjs-container
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     depends_on:
-      - mysql
       - kafka
+    networks:
+      - backend-network
 
   mysql:
-    image: mysql:8.0
+    container_name: mysql-container
+    image: mysql:latest
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -33,28 +34,42 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
+    networks:
+      - backend-network
     volumes:
       - mysql-data:/var/lib/mysql
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:latest
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
+    container_name: zookeeper-container
+    image: wurstmeister/zookeeper:latest
+    restart: always
     ports:
       - "2181:2181"
+    networks:
+      - backend-network
 
   kafka:
-    image: confluentinc/cp-kafka:latest
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    container_name: kafka-container
+    image: wurstmeister/kafka:latest
+    restart: always
     ports:
       - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_CREATE_TOPICS: "user-topic:1:1"
     depends_on:
       - zookeeper
+    networks:
+      - backend-network
+
+networks:
+  frontend-network:
+    driver: bridge
+  backend-network:
+    driver: bridge
 
 volumes:
   mysql-data:
+    driver: local
