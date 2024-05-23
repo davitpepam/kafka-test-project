@@ -13,4 +13,6 @@ This project is a full-stack application that utilizes Angular for the frontend,
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/fullstack-angular-nestjs-kafka-mysql.git
+git clone https://github.com/davitpepam/kafka-test-project.git
+
+docker-compose up --build
